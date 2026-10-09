@@ -1,4 +1,6 @@
+Here is the updated HTML file for PharmaTrack Pro. It transforms the Hourly Agenda into a full calculator-style entry system with big bold buttons, +/− controls, a clear button, and a dedicated focus-product sales counter that works alongside the main sales entry.
 
+```html
 <!doctype html>
 <html lang="en">
 <head>
@@ -443,4 +445,920 @@
       <div class="grid layout3" style="margin-top:10px">
         <div class="card panel"><div class="panel-title"><h3>Target Achievement</h3><span id="achSub"></span></div><div style="font-size:28px;font-weight:900" id="achVal">0%</div><div class="progress" style="margin:6px 0 4px"><span id="achBar" style="width:0%"></span></div><div class="muted" id="paceText" style="font-size:12px"></div></div>
         <div class="card panel"><div class="panel-title"><h3>AURA Performance</h3><span>Today</span></div><div class="mini-grid" id="auraMini"></div></div>
-        <div class="card panel"><div class="panel-title"><h3>Fast Actions</h3><span>workflow</span></div><div class="actions"><button class="btn
+        <div class="card panel"><div class="panel-title"><h3>Fast Actions</h3><span>workflow</span></div><div class="actions"><button class="btn" data-goto="expiry">Review expiry</button><button class="btn" data-goto="restock">Restock</button><button class="btn" data-goto="shelf">Shelf map</button><button class="btn" data-goto="reports">Report</button></div></div>
+      </div>
+    </section>
+
+    <!-- ================= PAGE SALES → HOURLY AGENDA ================= -->
+    <section class="page" id="page-sales">
+      <div class="page-head">
+        <div>
+          <h1>Hourly Agenda</h1>
+          <p>Shift patterns: Morning 6am–2pm · Afternoon 2pm–10pm · Graveyard 12am–6am · Friday start of week</p>
+        </div>
+        <div class="actions">
+          <button class="btn" id="setTarget">Set monthly target</button>
+          <button class="btn green" id="saveSales">Save sales</button>
+        </div>
+      </div>
+
+      <!-- STICKY PANEL -->
+      <div class="card" style="padding:0;overflow:visible;margin-bottom:10px;">
+        <div class="agenda-sticky-header">
+          <div class="meta">
+            <span>📅 <strong id="agendaDate">—</strong></span>
+            <span>⏱ <strong id="agendaTime">—</strong></span>
+            <span>💰 Sales <strong id="agendaSales">0</strong></span>
+            <span>🎯 Target <strong id="agendaTarget">0</strong></span>
+            <span>📊 Achieved <strong id="agendaPct" style="color:var(--green)">0%</strong></span>
+          </div>
+          <div class="week-selector">
+            <label style="font-size:11px;color:var(--muted);font-weight:700;">WEEK</label>
+            <select id="weekSelect"></select>
+            <span class="badge ok" id="weekStartBadge">Fri start</span>
+          </div>
+        </div>
+        <!-- Agenda table container -->
+        <div id="agendaContainer" style="padding:0 0 12px 0;"></div>
+      </div>
+
+      <div class="grid kpis" id="salesKpis"></div>
+    </section>
+
+    <!-- ================= INVENTORY ================= -->
+    <section class="page" id="page-inventory">
+      <div class="page-head"><div><h1>Inventory Master</h1><p>GTIN, RMS, description, brand, supplier, batch, expiry, units and facings.</p></div><div class="actions"><button class="btn" id="addProduct">＋ Add product</button><button class="btn" id="downloadCsv">CSV template</button></div></div>
+      <div class="card panel"><div class="actions" style="margin-bottom:8px"><input id="invSearch" placeholder="Search product / GTIN / RMS" style="flex:1;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:8px;background:#091020;color:var(--text)"><select id="invFilter" class="field" style="width:auto;padding:8px;background:#091020;color:var(--text);border:1px solid var(--border);border-radius:8px"><option value="all">All status</option><option value="expired">Expired</option><option value="soon">Within 30d</option><option value="low">Low stock</option><option value="ok">OK</option></select></div><div class="table-wrap"><table class="table" id="invTable"></table></div></div>
+    </section>
+
+    <!-- ================= SCANNER ================= -->
+    <section class="page" id="page-scanner">
+      <div class="page-head"><div><h1>GS1 Camera Scanner</h1><p>Instant capture and parsing. Checks master database automatically.</p></div><div class="actions"><button class="btn primary" id="btnRestartCamera">Restart Camera</button></div></div>
+      <div class="scan-box">
+        <div class="card panel">
+            <div class="scanner" id="scannerContainer">
+                <div id="reader" style="width:100%; border-radius:10px; overflow:hidden;"></div>
+            </div>
+            <div class="tag-row" style="margin-top:12px;justify-content:center;">
+                <span class="badge">01 GTIN</span><span class="badge">17 Expiry</span><span class="badge">10 Batch</span>
+            </div>
+        </div>
+        <div class="card panel">
+            <div class="panel-title"><h3>Manual GS1 Parse / Paste</h3><span id="parseState">waiting</span></div>
+            <div class="field"><label>Barcode string</label><textarea id="gs1Input" placeholder="Example: (01)06212345678903(17)270131(10)B24018"></textarea></div>
+            <div class="actions" style="margin-top:8px"><button class="btn primary" id="parseGs1">Parse GS1</button><button class="btn" id="clearGs1">Clear</button></div>
+            <div id="parseResult" style="margin-top:14px"></div>
+        </div>
+      </div>
+      <div class="card panel" style="margin-top:10px"><div class="panel-title"><h3>Recent Scans</h3><span id="scanCount"></span></div><div class="table-wrap"><table class="table" id="scanTable"></table></div></div>
+    </section>
+
+    <!-- ================= EXPIRY ================= -->
+    <section class="page" id="page-expiry">
+      <div class="page-head"><div><h1>Expiry Tracker</h1><p>RAG triage for expired, near-expiry and safe stock.</p></div><div class="actions"><button class="btn danger" id="filterExpired">Expired</button><button class="btn warn" id="filterSoon">Within 30d</button><button class="btn" id="filterAllExpiry">All</button></div></div>
+      <div class="grid kpis" id="expiryKpis"></div>
+      <div class="card panel"><div class="table-wrap"><table class="table" id="expiryTable"></table></div></div>
+    </section>
+
+    <!-- ================= SHELF ================= -->
+    <section class="page" id="page-shelf">
+      <div class="page-head"><div><h1>Shelf Planner</h1><p>Visual map organized by health category and capacity flags.</p></div><div class="actions"><button class="btn" id="addSlot">＋ Assign product</button><button class="btn" id="printShelf">Print map</button></div></div>
+      <div class="card panel">
+          <div id="shelfMap" class="shelf">
+              <!-- Dynamically rendered via JS -->
+          </div>
+      </div>
+    </section>
+
+    <!-- ================= RESTOCK ================= -->
+    <section class="page" id="page-restock">
+      <div class="page-head"><div><h1>Smart Restock</h1><p>Action queue based on stock on hand, min/max levels and expiry risk.</p></div><div class="actions"><button class="btn primary" id="rebuildRestock">Refresh queue</button><button class="btn" id="exportRestock">Export CSV</button></div></div>
+      <div class="grid kpis" id="restockKpis"></div>
+      <div class="card panel"><div class="table-wrap"><table class="table" id="restockTable"></table></div></div>
+    </section>
+
+    <!-- ================= REPORTS ================= -->
+    <section class="page" id="page-reports">
+      <div class="page-head"><div><h1>Reports</h1><p>Print-ready views for daily sales, expiry and stock audits.</p></div><div class="actions"><button class="btn primary" id="printReport">Print / Save PDF</button><button class="btn" id="backupNow">JSON backup</button></div></div>
+      <div class="grid layout2"><div class="card panel"><div class="panel-title"><h3>Daily Sales Snapshot</h3><span id="reportDate"></span></div><div id="reportSales"></div></div><div class="card panel"><div class="panel-title"><h3>Expiry Audit</h3><span id="reportExpirySub"></span></div><div id="reportExpiry"></div></div></div>
+      <div class="card panel" style="margin-top:10px"><div class="panel-title"><h3>Branch / Audit Notes</h3><span>editable</span></div><div class="field"><label>Notes</label><textarea id="reportNotes" placeholder="Enter handover / audit notes..."></textarea></div></div>
+    </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section class="page" id="page-settings">
+      <div class="page-head"><div><h1>Settings & Master Data</h1><p>Configuration, bulk upload, and database management.</p></div></div>
+      
+      <div class="grid layout2" style="margin-bottom:10px">
+        <div class="card panel">
+            <div class="panel-title"><h3>Master Database Setup</h3><span class="badge ok">Sync Ready</span></div>
+            <p class="muted" style="margin-top:0;font-size:12px;">Upload a CSV to update your product database instantly.</p>
+            <div class="actions" style="margin-top:14px; gap:10px;">
+                <button class="btn primary" style="width:100%" onclick="document.getElementById('importMasterFile').click()">📤 Upload Master Data (Replace)</button>
+                <button class="btn" style="width:100%" onclick="document.getElementById('appendMasterFile').click()">➕ Append Master Data (Add)</button>
+                <button class="btn" style="width:100%" id="downloadCsvSettings">📝 Download CSV Template</button>
+            </div>
+            <input type="file" id="importMasterFile" accept=".csv" hidden>
+            <input type="file" id="appendMasterFile" accept=".csv" hidden>
+        </div>
+        
+        <div class="card panel">
+            <div class="panel-title"><h3>Data Tools</h3><span>LocalStorage</span></div>
+            <div class="actions" style="display:flex; flex-direction:column; gap:8px;">
+                <button class="btn" id="importJsonBtn">📥 Restore JSON Backup</button>
+                <button class="btn" id="exportJson2">💾 Export JSON Backup</button>
+                <button class="btn" id="exportAllCsv">📊 Export Inventory CSV</button>
+                <input type="file" id="importJsonFile" accept=".json" hidden>
+            </div>
+            <div class="muted" style="margin-top:12px;font-size:11px">Browser storage is your active source of truth. Backup frequently.</div>
+        </div>
+      </div>
+
+      <div class="grid layout2">
+        <div class="card panel"><div class="panel-title"><h3>Branch Config</h3><span>UI settings</span></div><div class="form-grid"><div class="field span2"><label>Branch name</label><input id="setBranch"></div><div class="field"><label>Currency</label><select id="setCurrency"><option>AED</option><option>KWD</option></select></div><div class="field"><label>Monthly target</label><input type="number" id="setTargetInput"></div></div><div class="actions" style="margin-top:10px"><button class="btn primary" id="saveSettings">Save settings</button></div></div>
+        
+        <div class="card panel"><div class="panel-title"><h3>Application Status</h3><span>v2.1</span></div><div class="mini-grid"><div class="mini"><span>Products</span><b id="stProducts">0</b></div><div class="mini"><span>Scans</span><b id="stScans">0</b></div><div class="mini"><span>Sales rows</span><b>10</b></div><div class="mini"><span>Storage</span><b style="color:var(--green)">Local</b></div></div></div>
+      </div>
+    </section>
+  </div>
+</main>
+</div>
+
+<div class="modal" id="productModal"><div class="modal-card"><div class="modal-head"><h3 id="modalTitle">Add product</h3><button class="btn" id="closeModal">✕</button></div><form id="productForm"><div class="form-grid"><div class="field"><label>GTIN (Barcode)</label><input name="gtin" required></div><div class="field"><label>RMS</label><input name="rms"></div><div class="field span2"><label>Description</label><input name="description" required></div><div class="field"><label>Brand</label><input name="brand"></div><div class="field"><label>Supplier</label><input name="supplier"></div><div class="field"><label>Batch</label><input name="batch"></div><div class="field"><label>Expiry</label><input type="date" name="expiry"></div><div class="field"><label>Units</label><input type="number" min="0" name="units" value="0"></div><div class="field"><label>Min</label><input type="number" min="0" name="min" value="5"></div><div class="field"><label>Max</label><input type="number" min="0" name="max" value="20"></div><div class="field"><label>Facings</label><input type="number" min="0" name="facings" value="1"></div><div class="field span2"><label>Rack Assignment</label><select name="shelf">
+    <option value="RACK 1">RACK 1 (Collagen)</option><option value="RACK 2">RACK 2 (Women's)</option><option value="RACK 3">RACK 3</option><option value="RACK 4">RACK 4 (Immunity)</option><option value="RACK 5">RACK 5</option><option value="RACK 6">RACK 6 (Heart Health)</option><option value="RACK 7">RACK 7</option><option value="RACK 8">RACK 8 (Weight Loss)</option><option value="RACK 9">RACK 9</option><option value="RACK 10">RACK 10</option><option value="RACK 11">RACK 11</option>
+</select></div></div><div class="actions" style="justify-content:flex-end;margin-top:12px"><button type="button" class="btn" id="cancelProduct">Cancel</button><button type="submit" class="btn primary">Save product</button></div></form></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// SPLASH
+// ============================================================
+window.onload = () => {
+  setTimeout(() => {
+    const splash = document.getElementById('splash');
+    splash.style.opacity = '0';
+    setTimeout(() => splash.remove(), 600);
+  }, 1800);
+};
+
+// ============================================================
+// CONSTANTS & STATE
+// ============================================================
+const KEY='pharmatrack_pro_v2';
+const metricCols=['sales','trn','no7','aura','units','footfall'];
+const today=new Date();
+const iso=d=>new Date(d).toISOString().slice(0,10);
+const days=(a,b)=>Math.round((new Date(b)-new Date(a))/86400000);
+const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
+const money=n=>`${state.settings.currency} ${fmt(n)}`;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+let state=load();
+
+// ============================================================
+// SHIFT DEFINITIONS
+// ============================================================
+const SHIFTS = [
+  { id:'morning', label:'MORNING SHIFT', time:'6:00 AM – 2:00 PM', badge:'morning', hours:['6am','7am','8am','9am','10am','11am','12pm','1pm'] },
+  { id:'afternoon', label:'AFTERNOON SHIFT', time:'2:00 PM – 10:00 PM', badge:'afternoon', hours:['2pm','3pm','4pm','5pm','6pm','7pm','8pm','9pm'] },
+  { id:'graveyard', label:'GRAVEYARD SHIFT', time:'12:00 AM – 6:00 AM', badge:'graveyard', hours:['12am','1am','2am','3am','4am','5am'] }
+];
+
+const ALL_HOURS = [...SHIFTS[2].hours, ...SHIFTS[0].hours, ...SHIFTS[1].hours];
+
+// ============================================================
+// RACK STRUCTURE
+// ============================================================
+const rackStructure = [
+  { group: "Collagen & Skin Brightening", racks: [ { id: 'RACK 1', icon: '🧴', status: 'Out', items: 30, shelves: 6 } ] },
+  { group: "Women's / Skin, Hair & Nails", racks: [ { id: 'RACK 2', icon: '🌸', status: 'Low', items: 8, shelves: 6 }, { id: 'RACK 3', icon: '💅', status: '', items: 6, shelves: 6 } ] },
+  { group: "Immunity / Multivitamins", racks: [ { id: 'RACK 4', icon: '💊', status: 'Low', items: 3, shelves: 6 }, { id: 'RACK 5', icon: '🛡️', status: '', items: 3, shelves: 6 } ] },
+  { group: "Heart Health / Omega / Joint Care", racks: [ { id: 'RACK 6', icon: '🦴', status: 'Low', items: 5, shelves: 6 }, { id: 'RACK 7', icon: '💪', status: 'Low', items: 6, shelves: 6 } ] },
+  { group: "Weight Loss / Sleep / Calcium & Mg", racks: [ { id: 'RACK 8', icon: '🔬', status: '', items: 0, shelves: 6 }, { id: 'RACK 9', icon: '🐟', status: '', items: 0, shelves: 6 }, { id: 'RACK 10', icon: '🦴', status: '', items: 0, shelves: 6 }, { id: 'RACK 11', icon: '⚖️', status: '', items: 0, shelves: 6 } ] }
+];
+
+// ============================================================
+// DEFAULT STATE
+// ============================================================
+function defaultState(){
+ const t=iso(today);
+ const products=[
+  {id:1,gtin:'874312020605',rms:'ZIBOZ12020605',description:'ZINCELATED 50MG 100CAP',brand:'ZIBOZ',supplier:'ZIBOZ',batch:'NB',expiry:addDays(t,180),units:16,min:6,max:24,facings:2,shelf:'RACK 1'},
+  {id:2,gtin:'874312017803',rms:'ZIBOZ11780',description:'E-1000 IU 60 SOFTGELS',brand:'ZIBOZ',supplier:'ZIBOZ',batch:'NB',expiry:addDays(t,210),units:17,min:6,max:24,facings:2,shelf:'RACK 1'},
+  {id:3,gtin:'874312117800',rms:'WMBOWM551',description:'PURITANS PRIDE E 1000IU CAP 50',brand:'PURITANS PRIDE',supplier:'PURITAN',batch:'WMB',expiry:addDays(t,90),units:17,min:6,max:24,facings:2,shelf:'RACK 2'},
+  {id:4,gtin:'740985212455',rms:'22023124121',description:'ST E-400 IU 110SOFTGEL',brand:'ST',supplier:'ST',batch:'ST400',expiry:addDays(t,330),units:16,min:6,max:24,facings:2,shelf:'RACK 4'},
+  {id:5,gtin:'733739009067',rms:'WOBOWO906',description:'NOW E-400 MIXED TOCO.&SELE.CAP.100S NB',brand:'NOW',supplier:'NOW',batch:'NB',expiry:addDays(t,120),units:16,min:6,max:24,facings:2,shelf:'RACK 6'},
+  {id:6,gtin:'874312017704',rms:'ZIBOZ12017704',description:'VIT E - 400 IU S/G CAPS 100S',brand:'ZIBOZ',supplier:'ZIBOZ',batch:'NB',expiry:addDays(t,150),units:16,min:6,max:24,facings:2,shelf:'RACK 7'}
+ ];
+
+ // Build weeks 1..50 (Friday start). Store all hours per day.
+ // Each week: { weekNo, startDate (Friday), days: { 'YYYY-MM-DD': { rows:[...], notes:'' } } }
+ const weeks = [];
+ const startFriday = new Date(today);
+ // move back to last Friday
+ const day = startFriday.getDay(); // 0=Sun,5=Fri
+ const diff = (day + 7 - 5) % 7; // days since Friday
+ startFriday.setDate(startFriday.getDate() - diff);
+ for(let w=0; w<50; w++){
+   const wStart = new Date(startFriday);
+   wStart.setDate(wStart.getDate() + w*7);
+   const daysObj = {};
+   for(let d=0; d<7; d++){
+     const dd = new Date(wStart);
+     dd.setDate(dd.getDate() + d);
+     const key = iso(dd);
+     daysObj[key] = {
+       rows: ALL_HOURS.map(h=>({ hour:h, sales:0, trn:0, no7:0, aura:0, units:0, footfall:0 })),
+       focusSales: 0,
+       focusNote: '',
+       notes: ''
+     };
+   }
+   weeks.push({ weekNo:w+1, startDate: iso(wStart), days: daysObj });
+ }
+
+ // Pre-fill current week day with sample values for demo
+ const currentWeek = weeks[0];
+ const todayKey = iso(today);
+ if(currentWeek.days[todayKey]){
+   const sample = currentWeek.days[todayKey].rows;
+   const salesSamples = [1200,980,1450,880,1640,2180,1900,1760,1200,980,760,540,420,380,320,290,260,240,220,210,200,190,180,170];
+   const trnSamples = [12,10,15,9,18,22,20,17,13,10,8,6,5,4,3,3,2,2,2,1,1,1,1,1];
+   const no7Samples = [58,42,64,38,71,92,77,66,45,39,30,24,18,14,11,9,7,6,5,4,3,3,2,2];
+   const auraSamples = [8,6,10,7,12,15,13,11,8,7,5,4,3,2,2,1,1,1,1,1,0,0,0,0];
+   const unitsSamples = [28,22,34,18,39,49,45,38,31,24,18,14,10,8,6,5,4,3,3,2,2,1,1,1];
+   const ffSamples = [45,41,53,37,66,78,74,63,50,43,33,26,20,15,12,10,8,6,5,4,3,2,2,1];
+   sample.forEach((r,i)=>{
+     r.sales = salesSamples[i] || 0;
+     r.trn = trnSamples[i] || 0;
+     r.no7 = no7Samples[i] || 0;
+     r.aura = auraSamples[i] || 0;
+     r.units = unitsSamples[i] || 0;
+     r.footfall = ffSamples[i] || 0;
+   });
+   currentWeek.days[todayKey].focusSales = 53;
+   currentWeek.days[todayKey].focusNote = 'Focus: Vitamin D3';
+   currentWeek.days[todayKey].notes = 'Handover: Check cold chain.';
+ }
+
+ return {
+   version:2,
+   settings:{branch:'Boots DXB T3 Arrivals',currency:'AED',target:60000},
+   products,
+   weeks,
+   scans:[],
+   notes:'',
+   lastSave:new Date().toISOString()
+ };
+}
+
+function addDays(base,n){const d=new Date(base);d.setDate(d.getDate()+n);return iso(d)}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&x.version===2&&x.weeks)return x;return defaultState()}catch{return defaultState()}}
+function persist(){state.lastSave=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(state));document.getElementById('lastSave').textContent=new Date(state.lastSave).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500)}
+function statusFor(p){const d=days(iso(today),p.expiry);if(d<0)return'Expired';if(d<=30)return'Within 30d';if(p.units<=p.min)return'Low stock';return'OK'}
+function statusBadge(s){return `<span class="badge ${s==='Expired'?'red':(s==='Within 30d'||s==='Low stock')?'warn':'ok'}">${esc(s)}</span>`}
+
+// ============================================================
+// WEEK HELPERS
+// ============================================================
+function getWeekByNo(no){ return state.weeks.find(w=>w.weekNo===no) || state.weeks[0]; }
+function getCurrentWeek(){ 
+  const t = iso(today);
+  for(const w of state.weeks){
+    if(w.days[t]) return w;
+  }
+  return state.weeks[0];
+}
+function getDayData(weekNo, dateKey){
+  const w = getWeekByNo(weekNo);
+  return w?.days[dateKey] || null;
+}
+function getCurrentWeekNo(){ return getCurrentWeek()?.weekNo || 1; }
+
+// ============================================================
+// TOTALS (from current week's today, or fallback)
+// ============================================================
+function totals(){
+  const w = getCurrentWeek();
+  const t = iso(today);
+  const d = w?.days[t];
+  if(!d) return {sales:0,trn:0,no7:0,aura:0,units:0,footfall:0};
+  const tot = {sales:0,trn:0,no7:0,aura:0,units:0,footfall:0};
+  d.rows.forEach(r=>metricCols.forEach(k=>tot[k]+=Number(r[k]||0)));
+  return tot;
+}
+function totalFocus(){ 
+  const w = getCurrentWeek(); 
+  const d = w?.days[iso(today)];
+  return d?.focusSales || 0;
+}
+function achievement(){const t=state.settings.target||60000;return Math.min(100,(totals().sales/t)*100)}
+function bestHour(){const w=getCurrentWeek();const d=w?.days[iso(today)];if(!d)return{hour:'—',sales:0};return d.rows.reduce((a,b)=>Number(b.sales)>Number(a.sales)?b:a,d.rows[0])}
+
+// ============================================================
+// RENDER DASHBOARD
+// ============================================================
+function renderDashboard(){
+ const t=totals(), expired=state.products.filter(p=>statusFor(p)==='Expired'), soon=state.products.filter(p=>statusFor(p)==='Within 30d'), low=state.products.filter(p=>statusFor(p)==='Low stock');
+ document.getElementById('branchName').textContent=state.settings.branch;document.getElementById('todayLabel').textContent=today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+ // LIVE STRIP
+ const target = state.settings.target || 60000;
+ const pct = target ? ((t.sales/target)*100).toFixed(1) : '0.0';
+ const atv = t.trn ? t.sales/t.trn : 0;
+ const ipc = t.trn ? t.units/t.trn : 0;
+ const conversion = t.footfall ? ((t.trn/t.footfall)*100).toFixed(1) : '0.0';
+ const no7Pct = t.sales ? ((t.no7/t.sales)*100).toFixed(1) : '0.0';
+ const focus = totalFocus();
+
+ document.getElementById('liveStrip').innerHTML = `
+  <div class="card"><div class="label">Until Now</div><div class="val" style="color:var(--accent)">${money(t.sales)}</div><div class="sub">my sales</div></div>
+  <div class="card"><div class="label">My Sales</div><div class="val" style="color:var(--green)">${money(t.sales)}</div><div class="sub green">${pct}% of target</div></div>
+  <div class="card"><div class="label">Target</div><div class="val">${money(target)}</div><div class="sub">monthly</div></div>
+  <div class="card"><div class="label">No7</div><div class="val" style="color:var(--purple)">${money(t.no7)}</div><div class="sub">${no7Pct}% share</div></div>
+  <div class="card"><div class="label">ATV</div><div class="val">${money(atv)}</div><div class="sub">sales / trn</div></div>
+  <div class="card"><div class="label">Conversion</div><div class="val">${conversion}%</div><div class="sub">trn / footfall</div></div>
+  <div class="card"><div class="label">AURA</div><div class="val" style="color:var(--cyan)">${fmt(t.aura)}</div><div class="sub">transactions</div></div>
+  <div class="card"><div class="label">IPC</div><div class="val">${ipc.toFixed(2)}</div><div class="sub">units / trn</div></div>
+  <div class="card"><div class="label">Units Sold</div><div class="val">${fmt(t.units)}</div><div class="sub">total</div></div>
+  <div class="card"><div class="label">Footfall</div><div class="val">${fmt(t.footfall)}</div><div class="sub">tracked</div></div>
+  <div class="card"><div class="label">Focus Sales</div><div class="val" style="color:var(--amber)">${fmt(focus)}</div><div class="sub">counted</div></div>
+ `;
+
+ document.getElementById('dashKpis').innerHTML=[
+  ['Sales',money(t.sales),'+14% vs pacing'],['Transactions',fmt(t.trn),'live'],['ATV',money(atv),'sales / trn'],
+  ['IPC',ipc.toFixed(2),'units / trn'],['No7',money(t.no7),`${no7Pct}% share`],['Footfall',fmt(t.footfall),'tracked today']
+ ].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="val">${x[1]}</div><div class="sub">${x[2]}</div></div>`).join('');
+ const w = getCurrentWeek(); const day = w?.days[iso(today)];
+ const vals = day ? day.rows.map(r=>r.sales) : Array(24).fill(0);
+ const mx=Math.max(...vals,1);
+ document.getElementById('salesChart').innerHTML= (day?day.rows:[]).map(r=>`<div class="bar" style="height:${Math.max(10,(r.sales/mx)*100)}%"><small>${r.hour}</small></div>`).join('');
+ const watch=[...expired,...soon,...low].slice(0,6);
+ document.getElementById('watchCount').textContent=`${expired.length+soon.length+low.length} flagged`;
+ document.getElementById('watchList').innerHTML=watch.length?watch.map(p=>`<div class="alert"><div><b>${esc(p.description)}</b><small>${esc(p.gtin)} · ${p.units} units</small></div>${statusBadge(statusFor(p))}</div>`).join(''):`<div class="muted">No alerts.</div>`;
+ const ach=achievement();document.getElementById('achVal').textContent=ach.toFixed(1)+'%';document.getElementById('achBar').style.width=Math.min(100,ach)+'%';document.getElementById('achSub').textContent=money(target)+' target';document.getElementById('paceText').textContent=`${money(t.sales)} achieved · ${money(Math.max(0,target-t.sales))} remaining`;
+ document.getElementById('auraMini').innerHTML=[
+  ['Full AURA',fmt(t.aura),'transactions'],['AURA %',t.trn?(t.aura/t.trn*100).toFixed(1)+'%':'0%','penetration'],
+  ['Units',fmt(t.units),'sold'],['Best hour',bestHour().hour,bestHour().sales?money(bestHour().sales):'']
+ ].map(x=>`<div class="mini"><span>${x[0]}</span><b>${x[1]}</b><small class="muted">${x[2]}</small></div>`).join('');
+}
+
+// ============================================================
+// RENDER SALES (HOURLY AGENDA)
+// ============================================================
+let currentWeekNo = getCurrentWeekNo();
+let currentDateKey = iso(today);
+
+function renderSales(){
+ const t=totals();
+ const target = state.settings.target || 60000;
+ const pct = target ? ((t.sales/target)*100).toFixed(1) : '0.0';
+ const focus = totalFocus();
+
+ // Sticky header values
+ document.getElementById('agendaDate').textContent = new Date(currentDateKey).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+ document.getElementById('agendaTime').textContent = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+ document.getElementById('agendaSales').textContent = money(t.sales);
+ document.getElementById('agendaTarget').textContent = money(target);
+ document.getElementById('agendaPct').textContent = pct+'%';
+
+ // KPIs
+ document.getElementById('salesKpis').innerHTML=[
+  ['Sales',money(t.sales)],['Transactions',fmt(t.trn)],['ATV',money(t.trn?t.sales/t.trn:0)],
+  ['IPC',t.trn?(t.units/t.trn).toFixed(2):'0'],['No7 share',t.sales?(t.no7/t.sales*100).toFixed(1)+'%':'0%'],
+  ['Focus',fmt(focus)]
+ ].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="val">${x[1]}</div><div class="sub">live calc</div></div>`).join('');
+
+ // Build agenda container
+ const container = document.getElementById('agendaContainer');
+ const week = getWeekByNo(currentWeekNo);
+ const day = week?.days[currentDateKey];
+ if(!day){
+   container.innerHTML = `<div class="muted" style="padding:20px;text-align:center;">No data for this date.</div>`;
+   return;
+ }
+
+ let html = '';
+ SHIFTS.forEach(shift => {
+   const shiftRows = day.rows.filter(r=>shift.hours.includes(r.hour));
+   const shiftTotal = shiftRows.reduce((a,r)=>a+Number(r.sales||0),0);
+   const shiftUnits = shiftRows.reduce((a,r)=>a+Number(r.units||0),0);
+   const shiftFocus = day.focusSales || 0;
+
+   html += `<div class="shift-block">`;
+   html += `<div class="shift-header">
+     <h3>${shift.label} <span class="shift-badge ${shift.badge}">${shift.time}</span>
+       ${shift.id==='afternoon' ? `<span class="focus-counter">⭐ Focus <b>${fmt(shiftFocus)}</b> <button class="add-focus" onclick="addFocus()">+</button></span>` : ''}
+     </h3>
+     <div class="shift-total">${money(shiftTotal)} <small>${fmt(shiftUnits)} units</small></div>
+   </div>`;
+
+   // Hour rows
+   html += `<div style="display:grid;grid-template-columns:80px repeat(6,1fr) 140px;gap:6px;padding:4px 8px;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;">
+     <div>Hour</div><div style="text-align:center;">Sales</div><div style="text-align:center;">TRN</div><div style="text-align:center;">No7</div><div style="text-align:center;">AURA</div><div style="text-align:center;">Units</div><div style="text-align:center;">Footfall</div><div style="text-align:center;">Actions</div>
+   </div>`;
+
+   shift.hours.forEach(hour => {
+     const r = day.rows.find(x=>x.hour===hour);
+     if(!r) return;
+     const idx = day.rows.indexOf(r);
+     html += `<div class="hour-row" style="grid-template-columns:80px repeat(6,1fr) 140px;">
+       <div class="hour-label">${hour}</div>
+       ${metricCols.map(k=>`
+         <div class="metric-cell">
+           <div class="calc-btn" onclick="openCalc(${idx},'${k}')" data-idx="${idx}" data-key="${k}">
+             ${fmt(r[k])}<span class="unit-label">${k==='sales'?'AED':''}</span>
+           </div>
+         </div>
+       `).join('')}
+       <div class="cell-actions">
+         <button class="mini-btn clear-btn" onclick="clearRow(${idx})" title="Clear row">✕</button>
+         <button class="mini-btn focus-btn" onclick="addFocus()" title="Add focus sale">★</button>
+       </div>
+     </div>`;
+   });
+
+   // Shift total row
+   html += `<div class="hour-row shift-total-row" style="grid-template-columns:80px repeat(6,1fr) 140px;">
+     <div class="hour-label">TOTAL</div>
+     ${metricCols.map(k=>`<div class="metric-cell"><div class="calc-btn" style="background:transparent;border-color:transparent;color:var(--green);font-size:16px;">${fmt(shiftRows.reduce((a,r)=>a+Number(r[k]||0),0))}</div></div>`).join('')}
+     <div class="cell-actions"></div>
+   </div>`;
+
+   html += `</div>`;
+ });
+
+ // Handover remarks
+ html += `<div class="handover-remarks">
+   <label>📝 Handover Remarks</label>
+   <textarea id="agendaNotes" placeholder="Enter shift handover notes...">${esc(day.notes||'')}</textarea>
+ </div>`;
+
+ container.innerHTML = html;
+
+ // Bind notes
+ const notesEl = document.getElementById('agendaNotes');
+ if(notesEl){
+   notesEl.oninput = (e) => {
+     day.notes = e.target.value;
+     persist();
+   };
+ }
+
+ // Update week selector
+ renderWeekSelect();
+}
+
+function renderWeekSelect(){
+ const sel = document.getElementById('weekSelect');
+ if(!sel) return;
+ const current = currentWeekNo;
+ sel.innerHTML = state.weeks.map(w=>{
+   const start = new Date(w.startDate).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+   return `<option value="${w.weekNo}" ${w.weekNo===current?'selected':''}>Week ${w.weekNo} (${start})</option>`;
+ }).join('');
+ sel.onchange = (e) => {
+   currentWeekNo = Number(e.target.value);
+   // Find the Friday of that week
+   const w = getWeekByNo(currentWeekNo);
+   if(w){
+     // Find today's equivalent day in that week, or default to first day
+     const targetDate = iso(today);
+     const dayKeys = Object.keys(w.days);
+     const match = dayKeys.find(k=>k===targetDate);
+     currentDateKey = match || dayKeys[0];
+   }
+   renderSales();
+   renderDashboard();
+ };
+}
+
+// ============================================================
+// CALCULATOR POPUP
+// ============================================================
+let calcTarget = { idx: null, key: null };
+
+function openCalc(idx, key){
+ const day = getDayData(currentWeekNo, currentDateKey);
+ if(!day) return;
+ const r = day.rows[idx];
+ if(!r) return;
+ calcTarget = { idx, key };
+
+ const currentVal = r[key] || 0;
+ const label = key === 'sales' ? 'Sales (AED)' : key === 'trn' ? 'Transactions' : key === 'no7' ? 'No7 Sales' : key === 'aura' ? 'AURA Count' : key === 'units' ? 'Units Sold' : 'Footfall';
+
+ // Build overlay
+ let overlay = document.getElementById('calcOverlay');
+ if(!overlay){
+   overlay = document.createElement('div');
+   overlay.id = 'calcOverlay';
+   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;';
+   document.body.appendChild(overlay);
+ }
+ overlay.style.display = 'flex';
+ overlay.innerHTML = `
+   <div style="background:#0d1423;border:1px solid var(--border2);border-radius:20px;padding:24px;width:min(380px,100%);box-shadow:var(--shadow);">
+     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+       <div>
+         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;">${label}</div>
+         <div style="font-size:13px;color:var(--muted);">${r.hour} · Week ${currentWeekNo}</div>
+       </div>
+       <button onclick="closeCalc()" style="background:none;border:1px solid var(--border);color:var(--muted);width:36px;height:36px;border-radius:10px;font-size:18px;cursor:pointer;">✕</button>
+     </div>
+     <div style="font-size:56px;font-weight:900;text-align:center;padding:16px 0;letter-spacing:2px;color:var(--text);min-height:80px;display:flex;align-items:center;justify-content:center;" id="calcDisplay">${currentVal}</div>
+     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;">
+       ${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="calcPress(${n})" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:#0a1020;color:var(--text);font-size:22px;font-weight:800;cursor:pointer;transition:all .1s;" onmouseover="this.style.background='rgba(108,143,255,.1)'" onmouseout="this.style.background='#0a1020'">${n}</button>`).join('')}
+       <button onclick="calcPress('00')" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:#0a1020;color:var(--text);font-size:22px;font-weight:800;cursor:pointer;">00</button>
+       <button onclick="calcPress(0)" style="padding:16px;border-radius:12px;border:1px solid var(--border);background:#0a1020;color:var(--text);font-size:22px;font-weight:800;cursor:pointer;">0</button>
+       <button onclick="calcClear()" style="padding:16px;border-radius:12px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.1);color:#ffabab;font-size:18px;font-weight:800;cursor:pointer;">C</button>
+     </div>
+     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+       <button onclick="calcBack()" style="padding:14px;border-radius:12px;border:1px solid var(--border);background:#0a1020;color:var(--text);font-size:18px;font-weight:800;cursor:pointer;">⌫ Back</button>
+       <button onclick="calcSave()" style="padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#6c8fff,#7c6ef7);color:#fff;font-size:18px;font-weight:800;cursor:pointer;">✓ Save</button>
+     </div>
+   </div>
+ `;
+ // Store current display value
+ overlay.dataset.value = String(currentVal);
+}
+
+function closeCalc(){
+ const overlay = document.getElementById('calcOverlay');
+ if(overlay) overlay.style.display = 'none';
+}
+
+function calcPress(val){
+ const overlay = document.getElementById('calcOverlay');
+ const display = document.getElementById('calcDisplay');
+ let current = overlay.dataset.value || '0';
+ if(current === '0' && val !== '00') current = String(val);
+ else current += String(val);
+ overlay.dataset.value = current;
+ display.textContent = current;
+}
+
+function calcClear(){
+ const overlay = document.getElementById('calcOverlay');
+ const display = document.getElementById('calcDisplay');
+ overlay.dataset.value = '0';
+ display.textContent = '0';
+}
+
+function calcBack(){
+ const overlay = document.getElementById('calcOverlay');
+ const display = document.getElementById('calcDisplay');
+ let current = overlay.dataset.value || '0';
+ current = current.slice(0, -1) || '0';
+ overlay.dataset.value = current;
+ display.textContent = current;
+}
+
+function calcSave(){
+ const overlay = document.getElementById('calcOverlay');
+ const val = Number(overlay.dataset.value || 0);
+ const day = getDayData(currentWeekNo, currentDateKey);
+ if(day && calcTarget.idx !== null){
+   day.rows[calcTarget.idx][calcTarget.key] = val;
+   persist();
+   renderSales();
+   renderDashboard();
+   toast('Saved');
+ }
+ closeCalc();
+}
+
+// ============================================================
+// FOCUS PRODUCT COUNTER
+// ============================================================
+function addFocus(){
+ const day = getDayData(currentWeekNo, currentDateKey);
+ if(!day) return;
+ const current = day.focusSales || 0;
+ const input = prompt('Enter focus product sale amount to add:', '');
+ if(input === null) return;
+ const num = Number(input);
+ if(isNaN(num) || num <= 0){ toast('Invalid amount'); return; }
+ day.focusSales = current + num;
+ persist();
+ renderSales();
+ renderDashboard();
+ toast(`Focus sale +${num} → total ${day.focusSales}`);
+}
+
+// ============================================================
+// CLEAR ROW
+// ============================================================
+function clearRow(idx){
+ const day = getDayData(currentWeekNo, currentDateKey);
+ if(!day) return;
+ if(!confirm('Clear this hour\'s data?')) return;
+ metricCols.forEach(k => { day.rows[idx][k] = 0; });
+ persist();
+ renderSales();
+ renderDashboard();
+ toast('Row cleared');
+}
+
+// ============================================================
+// RENDER INVENTORY
+// ============================================================
+function renderInventory(){
+ const q=(document.getElementById('invSearch')?.value||'').toLowerCase();const f=document.getElementById('invFilter')?.value||'all';
+ const rows=state.products.filter(p=>{const hay=[p.description,p.gtin,p.rms,p.brand,p.batch].join(' ').toLowerCase();const st=statusFor(p);return(!q||hay.includes(q))&&(f==='all'||(f==='expired'&&st==='Expired')||(f==='soon'&&st==='Within 30d')||(f==='low'&&st==='Low stock')||(f==='ok'&&st==='OK'))});
+ let html='<thead><tr><th>Product</th><th>GTIN</th><th>RMS</th><th>Expiry</th><th>Batch</th><th>Units</th><th>Rack</th><th>Status</th><th></th></tr></thead><tbody>';
+ rows.forEach(p=>{html+=`<tr><td><b>${esc(p.description)}</b><div class="muted">${esc(p.brand)} · ${esc(p.supplier)}</div></td><td>${esc(p.gtin)}</td><td>${esc(p.rms)}</td><td>${p.expiry}</td><td>${esc(p.batch)}</td><td>${p.units}</td><td>${p.shelf}</td><td>${statusBadge(statusFor(p))}</td><td><button class="btn" onclick="editProduct(${p.id})">Edit</button></td></tr>`});html+='</tbody>';document.getElementById('invTable').innerHTML=html;
+}
+
+// ============================================================
+// RENDER EXPIRY
+// ============================================================
+function renderExpiry(){
+ const e=state.products.filter(p=>statusFor(p)==='Expired').length,s=state.products.filter(p=>statusFor(p)==='Within 30d').length,o=state.products.filter(p=>statusFor(p)==='OK').length,l=state.products.filter(p=>statusFor(p)==='Low stock').length;
+ document.getElementById('expiryKpis').innerHTML=[['Expired',e,'red'],['Within 30d',s,'warn'],['Low stock',l,'warn'],['OK',o,'ok'],['Total products',state.products.length,''],['Tracked units',state.products.reduce((a,p)=>a+p.units,0),'']].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="val">${fmt(x[1])}</div><div class="sub" style="color:${x[2]==='red'?'var(--red)':x[2]==='warn'?'var(--amber)':x[2]==='ok'?'var(--green)':'var(--muted)'}">${x[2]||'inventory'}</div></div>`).join('');
+ renderExpiryTable('all');
+}
+
+function renderExpiryTable(mode='all'){
+ let rows=state.products.filter(p=>{const s=statusFor(p);return mode==='all'||(mode==='expired'&&s==='Expired')||(mode==='soon'&&s==='Within 30d')});
+ rows.sort((a,b)=>new Date(a.expiry)-new Date(b.expiry));
+ let html='<thead><tr><th>Product</th><th>Expiry</th><th>Days</th><th>Units</th><th>Batch</th><th>Status</th></tr></thead><tbody>';
+ rows.forEach(p=>{
+   const st=statusFor(p);
+   const rowClass = st==='Expired'?'row-red':st==='Within 30d'?'row-warn':'row-ok';
+   html+=`<tr class="${rowClass}"><td><b>${esc(p.description)}</b><div class="muted">${esc(p.gtin)}</div></td><td>${p.expiry}</td><td>${days(iso(today),p.expiry)}</td><td>${p.units}</td><td>${esc(p.batch)}</td><td>${statusBadge(st)}</td></tr>`
+ });
+ html+='</tbody>';document.getElementById('expiryTable').innerHTML=html;
+}
+
+// ============================================================
+// RENDER SHELF
+// ============================================================
+function renderShelf(){
+ let html = '';
+ rackStructure.forEach(cat => {
+   html += `<div class="rack-category">${cat.group}</div>`;
+   cat.racks.forEach(rack => {
+     const ps = state.products.filter(p=>p.shelf===rack.id);
+     const cells = [...ps, ...Array(Math.max(0, 6 - ps.length)).fill(null)];
+     
+     let badgeHtml = '';
+     if(rack.status === 'Out') badgeHtml = '<div class="badge red">OUT</div>';
+     else if(rack.status === 'Low') badgeHtml = '<div class="badge warn">LOW</div>';
+     
+     html += `<div class="shelf-row">
+       <div class="shelf-label">
+         <div class="icon">${rack.icon}</div>
+         <b>${rack.id}</b>
+         <div class="muted" style="font-size:10px;margin-bottom:6px;">${ps.length}/${rack.items||30} items<br>${rack.shelves} shelves</div>
+         ${badgeHtml}
+       </div>
+       <div class="shelf-cells">
+         ${cells.slice(0,6).map(p=>{
+           if(!p) return `<div class="slot"><div class="muted">Empty slot</div><small>Unassigned</small></div>`;
+           const st = statusFor(p);
+           let cls = 'slot filled';
+           if(st==='Expired') cls+=' expiry-red';
+           else if(st==='Within 30d' || days(iso(today),p.expiry)<=120) cls+=' expiry-orange';
+           else cls+=' expiry-green';
+           return `<div class="${cls}"><div class="sku">${esc(p.rms)}</div><b>${esc(p.description.slice(0,22))}${p.description.length>22?'…':''}</b><small>${p.units}u · ${p.facings}f</small><div style="margin-top:4px">${statusBadge(st)}</div></div>`;
+         }).join('')}
+       </div>
+     </div>`;
+   });
+ });
+ document.getElementById('shelfMap').innerHTML = html;
+}
+
+// ============================================================
+// RENDER RESTOCK
+// ============================================================
+function buildRestock(){return state.products.map(p=>{const need=Math.max(0,p.max-p.units);const score=(p.units<=p.min?3:0)+(statusFor(p)==='Expired'?4:0)+(statusFor(p)==='Within 30d'?2:0);return {...p,need,score}}).filter(x=>x.need>0||x.score>0).sort((a,b)=>b.score-a.score||b.need-a.need)}
+function renderRestock(){const list=buildRestock(),urgent=list.filter(x=>x.score>=3).length,units=list.reduce((a,p)=>a+p.need,0),sup=new Set(list.map(p=>p.supplier)).size;document.getElementById('restockKpis').innerHTML=[['Action items',list.length,'queue'],['Urgent',urgent,'priority'],['Suggested units',units,'to max'],['Suppliers',sup,'vendor count'],['Expired risk',list.filter(p=>statusFor(p)==='Expired').length,'remove'],['Near expiry',list.filter(p=>statusFor(p)==='Within 30d').length,'review']].map(x=>`<div class="card kpi"><div class="label">${x[0]}</div><div class="val">${fmt(x[1])}</div><div class="sub">${x[2]}</div></div>`).join('');let html='<thead><tr><th>Priority</th><th>Product</th><th>On hand</th><th>Min / Max</th><th>Suggested</th><th>Supplier</th><th>Reason</th></tr></thead><tbody>';list.forEach(p=>html+=`<tr><td>${p.score>=3?'<span class="badge red">HIGH</span>':p.score>=2?'<span class="badge warn">WATCH</span>':'<span class="badge ok">NORMAL</span>'}</td><td><b>${esc(p.description)}</b><div class="muted">${esc(p.rms)}</div></td><td>${p.units}</td><td>${p.min} / ${p.max}</td><td><b>${p.need}</b></td><td>${esc(p.supplier)}</td><td>${statusFor(p)==='Expired'?'Remove expired':statusFor(p)==='Within 30d'?'Near expiry':p.units<=p.min?'Below min':'Below max'}</td></tr>`);html+='</tbody>';document.getElementById('restockTable').innerHTML=html}
+
+// ============================================================
+// RENDER SCANS
+// ============================================================
+function renderScans(){
+  document.getElementById('scanCount').textContent=`${state.scans.length} scans`;
+  let html='<thead><tr><th>Time</th><th>Product Match</th><th>Batch</th><th>Expiry</th><th>Status</th></tr></thead><tbody>';
+  state.scans.slice().reverse().forEach(s => {
+    let stat = s.match ? 'ok' : 'muted';
+    let label = s.match ? '🟢 OK' : '⚪ N/A';
+    if(s.match && days(iso(today), s.expiry) < 0) { stat = 'red'; label = '🔴 EXP'; }
+    else if (s.match && days(iso(today), s.expiry) <= 30) { stat = 'warn'; label = '🟠 SOON'; }
+    
+    let prodName = s.match ? esc(s.matchDesc) : "UNKNOWN PRODUCT";
+    
+    html+=`<tr class="row-${stat==='muted'?'':stat}">
+      <td>${new Date(s.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td>
+      <td><b>${prodName}</b><div class="muted" style="font-size:10px">${esc(s.gtin||s.raw)}</div></td>
+      <td>${esc(s.batch||'--')}</td>
+      <td>${esc(s.expiry||'--')}</td>
+      <td><span class="badge ${stat}">${label}</span></td>
+    </tr>`;
+  });
+  html+='</tbody>';document.getElementById('scanTable').innerHTML=html;
+}
+
+// ============================================================
+// GS1 PARSER
+// ============================================================
+function parseGS1(raw){let s=raw.replace(/\u001d/g,'|').trim();const out={raw,gtin:'',expiry:'',batch:''};const m01=s.match(/(?:\(01\)|01)(\d{14})/);if(m01)out.gtin=m01[1];const m17=s.match(/(?:\(17\)|17)(\d{6})/);if(m17){const v=m17[1];let yy=+v.slice(0,2),mm=+v.slice(2,4),dd=+v.slice(4,6);const yyyy=2000+yy;out.expiry=`${yyyy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`}const m10=s.match(/(?:\(10\)|10)([A-Za-z0-9._\/-]{1,20})/);if(m10)out.batch=m10[1].replace(/[|()]+$/,'');return out}
+
+function useParsed(x){
+  const match=state.products.find(p=>p.gtin===x.gtin);
+  state.scans.push({...x, at:new Date().toISOString(), match:!!match, matchDesc: match?match.description:''});
+  if(match){
+    match.batch=x.batch||match.batch;
+    match.expiry=x.expiry||match.expiry;
+    toast(`Database Match: ${match.description}`);
+  } else {
+    toast('GS1 Parsed — Product not found in Master');
+  }
+  persist();renderScans();renderExpiry();renderInventory();
+}
+
+// ============================================================
+// RENDER REPORTS
+// ============================================================
+function renderReports(){const t=totals(), e=state.products.filter(p=>statusFor(p)==='Expired').length,s=state.products.filter(p=>statusFor(p)==='Within 30d').length;document.getElementById('reportDate').textContent=new Date().toLocaleDateString();document.getElementById('reportSales').innerHTML=`<div class="mini-grid"><div class="mini"><span>Sales</span><b>${money(t.sales)}</b></div><div class="mini"><span>TRN</span><b>${fmt(t.trn)}</b></div><div class="mini"><span>ATV</span><b>${money(t.trn?t.sales/t.trn:0)}</b></div><div class="mini"><span>IPC</span><b>${t.trn?(t.units/t.trn).toFixed(2):0}</b></div><div class="mini"><span>No7</span><b>${money(t.no7)}</b></div><div class="mini"><span>AURA</span><b>${fmt(t.aura)}</b></div></div>`;document.getElementById('reportExpirySub').textContent=`${e+s} flagged`;document.getElementById('reportExpiry').innerHTML=`<div class="tag-row"><span class="badge red">Expired ${e}</span><span class="badge warn">Within 30d ${s}</span><span class="badge ok">OK ${state.products.length-e-s}</span></div>`;document.getElementById('reportNotes').value=state.notes||''}
+function renderSettings(){document.getElementById('setBranch').value=state.settings.branch;document.getElementById('setCurrency').value=state.settings.currency;document.getElementById('setTargetInput').value=state.settings.target;document.getElementById('stProducts').textContent=state.products.length;document.getElementById('stScans').textContent=state.scans.length}
+function renderAll(){renderDashboard();renderSales();renderInventory();renderExpiry();renderShelf();renderRestock();renderScans();renderReports();renderSettings()}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function switchPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===name));
+  document.getElementById('crumb').textContent=name.replace(/^./,c=>c.toUpperCase());
+  document.getElementById('sidebar').classList.remove('open');
+  window.scrollTo(0,0);
+  
+  if(name==='scanner') initScanner();
+  else if(html5QrcodeScanner) { html5QrcodeScanner.clear(); html5QrcodeScanner = null; }
+}
+
+document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('button[data-page]');if(b)switchPage(b.dataset.page)});
+document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>switchPage(b.dataset.goto));
+document.getElementById('mobileMenu').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
+document.getElementById('quickAdd').onclick=()=>openProduct();
+document.getElementById('saveSales').onclick=()=>{persist();toast('Sales saved locally')};
+document.getElementById('setTarget').onclick=()=>{const v=prompt('Monthly target (AED):',state.settings.target);if(v!==null&&!isNaN(v)){state.settings.target=Number(v);persist();renderAll();toast('Target updated')}};
+document.getElementById('invSearch').oninput=renderInventory;document.getElementById('invFilter').onchange=renderInventory;
+
+// ============================================================
+// PRODUCT MODAL
+// ============================================================
+let editId=null;
+function openProduct(p=null){editId=p?.id||null;document.getElementById('modalTitle').textContent=p?'Edit product':'Add product';const f=document.getElementById('productForm');['gtin','rms','description','brand','supplier','batch','expiry','units','min','max','facings','shelf'].forEach(k=>f.elements[k].value=p?.[k]??(k==='shelf'?'RACK 1':(k==='expiry'?iso(today):'')));document.getElementById('productModal').classList.add('open')}
+function editProduct(id){openProduct(state.products.find(p=>p.id===id))}window.editProduct=editProduct;
+document.getElementById('addProduct').onclick=()=>openProduct();['closeModal','cancelProduct'].forEach(id=>document.getElementById(id).onclick=()=>document.getElementById('productModal').classList.remove('open'));
+document.getElementById('productForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);const obj={gtin:f.get('gtin'),rms:f.get('rms'),description:f.get('description'),brand:f.get('brand'),supplier:f.get('supplier'),batch:f.get('batch'),expiry:f.get('expiry'),units:Number(f.get('units')),min:Number(f.get('min')),max:Number(f.get('max')),facings:Number(f.get('facings')),shelf:f.get('shelf')};if(editId){Object.assign(state.products.find(p=>p.id===editId),obj)}else{obj.id=Math.max(0,...state.products.map(p=>p.id))+1;state.products.push(obj)}persist();renderAll();document.getElementById('productModal').classList.remove('open');toast(editId?'Product updated':'Product added')};
+
+// ============================================================
+// GS1 UI
+// ============================================================
+document.getElementById('parseGs1').onclick=()=>{const x=parseGS1(document.getElementById('gs1Input').value);document.getElementById('parseState').textContent=x.gtin?'parsed':'invalid';document.getElementById('parseResult').innerHTML=`<div class="mini-grid"><div class="mini"><span>GTIN</span><b>${esc(x.gtin||'—')}</b></div><div class="mini"><span>Expiry</span><b>${esc(x.expiry||'—')}</b></div><div class="mini"><span>Batch</span><b>${esc(x.batch||'—')}</b></div><div class="mini"><span>Master match</span><b>${state.products.some(p=>p.gtin===x.gtin)?'YES':'NO'}</b></div></div>`;if(x.gtin)useParsed(x); document.getElementById('gs1Input').value='';};
+document.getElementById('clearGs1').onclick=()=>{document.getElementById('gs1Input').value='';document.getElementById('parseResult').innerHTML='';document.getElementById('parseState').textContent='waiting'};
+['filterExpired','filterSoon','filterAllExpiry'].forEach(id=>document.getElementById(id).onclick=()=>renderExpiryTable(id==='filterExpired'?'expired':id==='filterSoon'?'soon':'all'));
+document.getElementById('rebuildRestock').onclick=()=>{renderRestock();toast('Restock queue refreshed')};
+document.getElementById('saveSettings').onclick=()=>{state.settings.branch=document.getElementById('setBranch').value.trim()||state.settings.branch;state.settings.currency=document.getElementById('setCurrency').value;state.settings.target=Number(document.getElementById('setTargetInput').value||60000);persist();renderAll();toast('Settings saved')};
+document.getElementById('reportNotes').oninput=e=>{state.notes=e.target.value;persist()};
+
+// ============================================================
+// DOWNLOAD / BACKUP
+// ============================================================
+function download(name,text,type='application/json'){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function inventoryCsv(){const head=['GTIN','RMS','DESCRIPTION','BRAND','SUPPLIER','BATCH','EXPIRY','UNITS','MIN','MAX','FACINGS','SHELF'];const rows=state.products.map(p=>[p.gtin,p.rms,p.description,p.brand,p.supplier,p.batch,p.expiry,p.units,p.min,p.max,p.facings,p.shelf]);return [head,...rows].map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\n')}
+document.getElementById('downloadCsv').onclick=()=>download('pharmatrack_inventory_template.csv',inventoryCsv(),'text/csv');
+document.getElementById('downloadCsvSettings').onclick=()=>download('pharmatrack_master_template.csv',inventoryCsv(),'text/csv');
+document.getElementById('exportAllCsv').onclick=()=>download('pharmatrack_inventory.csv',inventoryCsv(),'text/csv');
+
+function restockCsv(){const h=['PRIORITY','RMS','PRODUCT','UNITS','MIN','MAX','SUGGESTED','SUPPLIER','REASON'];const rows=buildRestock().map(p=>[p.score>=3?'HIGH':p.score>=2?'WATCH':'NORMAL',p.rms,p.description,p.units,p.min,p.max,p.need,p.supplier,statusFor(p)]);return [h,...rows].map(r=>r.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(',')).join('\n')};document.getElementById('exportRestock').onclick=()=>download('pharmatrack_restock.csv',restockCsv(),'text/csv');
+function backup(){download('pharmatrack_backup_'+iso(today)+'.json',JSON.stringify(state,null,2));toast('Backup exported')};document.getElementById('exportJson').onclick=backup;document.getElementById('exportJson2').onclick=backup;document.getElementById('backupNow').onclick=backup;
+
+// ============================================================
+// BACKUP IMPORT
+// ============================================================
+document.getElementById('importJsonBtn').onclick=()=>document.getElementById('importJsonFile').click();
+document.getElementById('importJsonFile').onchange=e=>{
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();r.onload=()=>{
+    try{const x=JSON.parse(r.result);if(!x.products||!x.weeks)throw Error();state=x;persist();renderAll();toast('Backup imported successfully')}catch{toast('Invalid backup file')}
+  };r.readAsText(file)
+};
+
+// ============================================================
+// CSV MASTER UPLOAD
+// ============================================================
+document.getElementById('importMasterFile').onchange=e=>{
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader(); r.onload=()=>{
+    try {
+      const lines = r.result.split('\n').filter(l=>l.trim().length>0);
+      if(lines.length<2) throw Error('Empty CSV');
+      const newProducts = [];
+      for(let i=1; i<lines.length; i++) {
+        const cols = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)?.map(s=>s.replace(/^"|"$/g,'')) || [];
+        if(cols[0]) {
+          newProducts.push({
+            id: i, gtin: cols[0], rms: cols[1]||'', description: cols[2]||'Unknown', brand: cols[3]||'',
+            supplier: cols[4]||'', batch: cols[5]||'', expiry: cols[6]||iso(today),
+            units: Number(cols[7]||0), min: Number(cols[8]||5), max: Number(cols[9]||20),
+            facings: Number(cols[10]||1), shelf: cols[11]||'RACK 1'
+          });
+        }
+      }
+      state.products = newProducts; persist(); renderAll(); toast(`Replaced database: ${newProducts.length} items loaded`);
+    } catch(err) { toast('CSV parse error. Use the template format.'); }
+  }; r.readAsText(file);
+};
+
+document.getElementById('appendMasterFile').onchange=e=>{
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader(); r.onload=()=>{
+    try {
+      const lines = r.result.split('\n').filter(l=>l.trim().length>0);
+      if(lines.length<2) throw Error('Empty CSV');
+      let maxId = Math.max(0, ...state.products.map(p=>p.id));
+      let added = 0;
+      for(let i=1; i<lines.length; i++) {
+        const cols = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g)?.map(s=>s.replace(/^"|"$/g,'')) || [];
+        if(cols[0] && !state.products.some(p=>p.gtin===cols[0])) {
+          maxId++; added++;
+          state.products.push({
+            id: maxId, gtin: cols[0], rms: cols[1]||'', description: cols[2]||'Unknown', brand: cols[3]||'',
+            supplier: cols[4]||'', batch: cols[5]||'', expiry: cols[6]||iso(today),
+            units: Number(cols[7]||0), min: Number(cols[8]||5), max: Number(cols[9]||20),
+            facings: Number(cols[10]||1), shelf: cols[11]||'RACK 1'
+          });
+        }
+      }
+      persist(); renderAll(); toast(`Appended ${added} new products`);
+    } catch(err) { toast('CSV parse error.'); }
+  }; r.readAsText(file);
+};
+
+document.getElementById('printReport').onclick=()=>window.print();document.getElementById('printShelf').onclick=()=>window.print();
+document.getElementById('resetDemo').onclick=()=>{if(confirm('Reset all local data to demo defaults?')){state=defaultState();persist();renderAll();toast('Demo data reset')}};
+
+// ============================================================
+// QR SCANNER
+// ============================================================
+let html5QrcodeScanner = null;
+function initScanner() {
+  if (html5QrcodeScanner) return;
+  html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader", { fps: 10, qrbox: {width: 250, height: 100}, supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA] }, false);
+  
+  html5QrcodeScanner.render((decodedText, decodedResult) => {
+      const parsed = parseGS1(decodedText);
+      if(parsed.gtin) {
+        useParsed(parsed);
+        html5QrcodeScanner.pause(true);
+        setTimeout(()=> html5QrcodeScanner.resume(), 2500);
+      } else {
+        toast("Scanned barcode is not standard GS1.");
+      }
+  }, (errorMessage) => {});
+}
+document.getElementById('btnRestartCamera').onclick = () => {
+    if(html5QrcodeScanner) { html5QrcodeScanner.clear(); html5QrcodeScanner = null; }
+    initScanner();
+    toast('Scanner module restarted');
+};
+
+// ============================================================
+// INIT
+// ============================================================
+// Set current date key
+currentDateKey = iso(today);
+currentWeekNo = getCurrentWeekNo();
+
+// Attach calculator close on overlay click
+document.addEventListener('click', (e) => {
+  const overlay = document.getElementById('calcOverlay');
+  if(overlay && e.target === overlay) closeCalc();
+});
+
+// Keyboard support for calculator
+document.addEventListener('keydown', (e) => {
+  const overlay = document.getElementById('calcOverlay');
+  if(!overlay || overlay.style.display === 'none') return;
+  if(e.key >= '0' && e.key <= '9') calcPress(e.key);
+  else if(e.key === 'Backspace') { e.preventDefault(); calcBack(); }
+  else if(e.key === 'Enter') { e.preventDefault(); calcSave(); }
+  else if(e.key === 'Escape') closeCalc();
+  else if(e.key === 'c' || e.key === 'C') calcClear();
+});
+
+renderAll();
+</script>
+</body>
+</html>
+```
